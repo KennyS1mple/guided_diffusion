@@ -1,0 +1,35 @@
+unet:
+    input_blocks:
+    (
+        (res, att(ds in att_res)) * num_res_blocks
+        res, down_sample(conv)
+    ) * sizeof(channel_mult)
+    middle_block:
+        res, att, res
+    output_block:
+        (
+        (res, att(ds in att_res)) * num_res_blocks
+        res, up_sample(F.interpolate)
+    ) * sizeof(channel_mult)
+
+res:(1, 2)并行
+    1.in_layers(x):
+        norm
+        silu
+        conv
+    2.emb_layers(emb):
+        silu
+        linear
+    scale_and_shift(改变emb和x结合的方式)
+        norm(x)
+        x * (1 + scale) + shift(scale and shift是从emb中切割出来的)
+        silu
+        dropout
+        conv
+
+att:
+    reshape(x) -> h(N x C x (W * H))
+    conv(h) -> (N x (C * 3) x (W * H))
+    h.split -> qkv
+    attention(qkv) -> h
+    (h + x).reshape
