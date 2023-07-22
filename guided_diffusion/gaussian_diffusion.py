@@ -125,6 +125,7 @@ class GaussianDiffusion:
         loss_type,
         rescale_timesteps=False,
     ):
+        # 变量值均以numpy格式存储
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
         self.loss_type = loss_type
