@@ -71,6 +71,7 @@ def classifier_and_diffusion_defaults():
     return res
 
 
+# 参数处理
 def create_model_and_diffusion(
     image_size,
     class_cond,
@@ -384,6 +385,7 @@ def sr_create_model(
     )
 
 
+# 参数处理
 def create_gaussian_diffusion(
     *,
     steps=1000,
@@ -404,7 +406,9 @@ def create_gaussian_diffusion(
     else:
         loss_type = gd.LossType.MSE
     if not timestep_respacing:
+        # 意思就是不采用间隔采样
         timestep_respacing = [steps]
+    # 创建间隔采样的dif
     return SpacedDiffusion(
         use_timesteps=space_timesteps(steps, timestep_respacing),
         betas=betas,

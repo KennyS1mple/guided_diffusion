@@ -99,6 +99,7 @@ class LossType(enum.Enum):
         return self == LossType.KL or self == LossType.RESCALED_KL
 
 
+# 存储dif的各种参数，例如beta，alpha，还有一些列系数
 class GaussianDiffusion:
     """
     Utilities for training and sampling diffusion models.

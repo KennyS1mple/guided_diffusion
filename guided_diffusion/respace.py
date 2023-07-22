@@ -71,6 +71,7 @@ class SpacedDiffusion(GaussianDiffusion):
 
     def __init__(self, use_timesteps, **kwargs):
         self.use_timesteps = set(use_timesteps)
+        # 新旧step映射
         self.timestep_map = []
         self.original_num_steps = len(kwargs["betas"])
 
@@ -83,6 +84,7 @@ class SpacedDiffusion(GaussianDiffusion):
                 last_alpha_cumprod = alpha_cumprod
                 self.timestep_map.append(i)
         kwargs["betas"] = np.array(new_betas)
+        # 根据新的beta初始化dif参数
         super().__init__(**kwargs)
 
     def p_mean_variance(
