@@ -3,3 +3,5 @@ datasets:获取常用数据集脚本
 guided_diffusion:
     unet.py:网络模型
     nn.py:模型工具，类似激活函数以及对标准化的封装
+    respace:创建间隔采样的dif
+    gaussian_dif:高斯dif，存储一系列参数，alpha，beta，以及密度系数，loss等
