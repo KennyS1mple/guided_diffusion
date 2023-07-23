@@ -37,6 +37,7 @@ class TrainLoop:
         fp16_scale_growth=1e-3,
         schedule_sampler=None,
         weight_decay=0.0,
+        # TODO : 退火训练参数？
         lr_anneal_steps=0,
     ):
         self.model = model
@@ -66,6 +67,7 @@ class TrainLoop:
         self.sync_cuda = th.cuda.is_available()
 
         self._load_and_sync_parameters()
+        # 混合精度训练FP16
         self.mp_trainer = MixedPrecisionTrainer(
             model=self.model,
             use_fp16=self.use_fp16,
@@ -178,6 +180,7 @@ class TrainLoop:
         self.log_step()
 
     def forward_backward(self, batch, cond):
+        # TODO : 需要调试查看cond和batch的具体数值
         self.mp_trainer.zero_grad()
         for i in range(0, batch.shape[0], self.microbatch):
             micro = batch[i : i + self.microbatch].to(dist_util.dev())
