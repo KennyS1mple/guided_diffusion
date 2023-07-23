@@ -3,6 +3,9 @@
 # File name: test.py
 # Desc     :
 
-import PIL
+from PIL import Image
 
-
+img = Image.open("datasets/luggage.jpg")
+img.resize((32, 64), resample=Image.BOX).show("1")
+img.resize((64, 64)).show("2")
+img.show("self")
