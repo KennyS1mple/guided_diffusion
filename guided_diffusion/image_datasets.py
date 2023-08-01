@@ -115,6 +115,7 @@ class ImageDataset(Dataset):
         if self.random_crop:
             arr = random_crop_arr(pil_image, self.resolution)
         else:
+            # 按照最小边等比例缩放后，进行中心裁减
             arr = center_crop_arr(pil_image, self.resolution)
 
         if self.random_flip and random.random() < 0.5:

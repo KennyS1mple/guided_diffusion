@@ -129,16 +129,16 @@ class LossSecondMomentResampler(LossAwareSampler):
         self.diffusion = diffusion
         self.history_per_term = history_per_term
         self.uniform_prob = uniform_prob
-        """
-        记录过去的10个loss数值
-        """
+        # 记录过去的10个loss数值
         self._loss_history = np.zeros(
             [diffusion.num_timesteps, history_per_term], dtype=np.float64
         )
+        # 记录保存了多少个loss，仅用于warmup测试
         self._loss_counts = np.zeros([diffusion.num_timesteps], dtype=np.int)
 
     def weights(self):
         if not self._warmed_up():
+            # 记录的loss未满10则采用uniform
             return np.ones([self.diffusion.num_timesteps], dtype=np.float64)
         weights = np.sqrt(np.mean(self._loss_history ** 2, axis=-1))
         weights /= np.sum(weights)
@@ -157,4 +157,5 @@ class LossSecondMomentResampler(LossAwareSampler):
                 self._loss_counts[t] += 1
 
     def _warmed_up(self):
+        # 判断是否热身完毕
         return (self._loss_counts == self.history_per_term).all()

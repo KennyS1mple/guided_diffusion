@@ -188,9 +188,12 @@ class TrainLoop:
                 k: v[i : i + self.microbatch].to(dist_util.dev())
                 for k, v in cond.items()
             }
+            # 判断是否为最后一个micro_batch
             last_batch = (i + self.microbatch) >= batch.shape[0]
             t, weights = self.schedule_sampler.sample(micro.shape[0], dist_util.dev())
 
+            # functools.partial返回固定部分参数的函数
+            # 相当于self.diffusion.training_losses(self.ddp_model, micro, t, model_kwargs=micro_cond, ...)
             compute_losses = functools.partial(
                 self.diffusion.training_losses,
                 self.ddp_model,
