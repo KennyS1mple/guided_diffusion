@@ -159,6 +159,8 @@ class GaussianDiffusion:
         )
         # log calculation clipped because the posterior variance is 0 at the
         # beginning of the diffusion chain.
+
+        # np.log = ln  (e为底数)
         self.posterior_log_variance_clipped = np.log(
             np.append(self.posterior_variance[1], self.posterior_variance[1:])
         )
@@ -188,6 +190,7 @@ class GaussianDiffusion:
         )
         return mean, variance, log_variance
 
+    # 加噪过程
     def q_sample(self, x_start, t, noise=None):
         """
         Diffuse the data for a given number of diffusion steps.
@@ -221,6 +224,7 @@ class GaussianDiffusion:
             + _extract_into_tensor(self.posterior_mean_coef2, t, x_t.shape) * x_t
         )
         posterior_variance = _extract_into_tensor(self.posterior_variance, t, x_t.shape)
+        # ln
         posterior_log_variance_clipped = _extract_into_tensor(
             self.posterior_log_variance_clipped, t, x_t.shape
         )
@@ -906,6 +910,8 @@ def _extract_into_tensor(arr, timesteps, broadcast_shape):
     :return: a tensor of shape [batch_size, 1, ...] where the shape has K dims.
     """
     res = th.from_numpy(arr).to(device=timesteps.device)[timesteps].float()
+    # res -> (N x 1 x 1 x 1)
     while len(res.shape) < len(broadcast_shape):
         res = res[..., None]
+    # 扩展到相同维度
     return res.expand(broadcast_shape)
