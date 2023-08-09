@@ -262,6 +262,7 @@ class GaussianDiffusion:
         if model_kwargs is None:
             model_kwargs = {}
 
+        # B: batch_size   C:channel
         B, C = x.shape[:2]
         assert t.shape == (B,)
         model_output = model(x, self._scale_timesteps(t), **model_kwargs)
@@ -273,6 +274,7 @@ class GaussianDiffusion:
                 model_log_variance = model_var_values
                 model_variance = th.exp(model_log_variance)
             else:
+                # 论文所述方式： exp(vlogB + (1-v)logB~)
                 min_log = _extract_into_tensor(
                     self.posterior_log_variance_clipped, t, x.shape
                 )
