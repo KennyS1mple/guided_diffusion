@@ -754,16 +754,21 @@ class GaussianDiffusion:
         kl = normal_kl(
             true_mean, true_log_variance_clipped, out["mean"], out["log_variance"]
         )
+        # 取均值， 输出为 N dim的向量， N为batch_size
+        # TODO : 暂不清楚为什么 / ln2
         kl = mean_flat(kl) / np.log(2.0)
 
+        # 计算 -log(p(x0|x1)), 虽然输入t不一定等于1，但最后只使用t=1的值
         decoder_nll = -discretized_gaussian_log_likelihood(
             x_start, means=out["mean"], log_scales=0.5 * out["log_variance"]
         )
         assert decoder_nll.shape == x_start.shape
+        # 同上todo
         decoder_nll = mean_flat(decoder_nll) / np.log(2.0)
 
         # At the first timestep return the decoder NLL,
         # otherwise return KL(q(x_{t-1}|x_t,x_0) || p(x_{t-1}|x_t))
+        # t == 0成立返回decoder_nll中的对应元素，否则返回kl中的对应元素
         output = th.where((t == 0), decoder_nll, kl)
         return {"output": output, "pred_xstart": out["pred_xstart"]}
 
@@ -798,8 +803,10 @@ class GaussianDiffusion:
                 model_kwargs=model_kwargs,
             )["output"]
             if self.loss_type == LossType.RESCALED_KL:
+                # TODO: 不知为何 x num_timesteps
                 terms["loss"] *= self.num_timesteps
         elif self.loss_type == LossType.MSE or self.loss_type == LossType.RESCALED_MSE:
+            # MSE  mean通过mse学习, 而var通过vlb学习, 两者互不影响, 见下文detach()
             model_output = model(x_t, self._scale_timesteps(t), **model_kwargs)
 
             if self.model_var_type in [
@@ -811,6 +818,7 @@ class GaussianDiffusion:
                 model_output, model_var_values = th.split(model_output, C, dim=1)
                 # Learn the variance using the variational bound, but don't let
                 # it affect our mean prediction.
+                # 这里使用了detach(), 代表这mean不会参与vlb_loss的梯度下降
                 frozen_out = th.cat([model_output.detach(), model_var_values], dim=1)
                 terms["vb"] = self._vb_terms_bpd(
                     model=lambda *args, r=frozen_out: r,
@@ -832,11 +840,14 @@ class GaussianDiffusion:
                 ModelMeanType.EPSILON: noise,
             }[self.model_mean_type]
             assert model_output.shape == target.shape == x_start.shape
+
             terms["mse"] = mean_flat((target - model_output) ** 2)
+
             if "vb" in terms:
                 terms["loss"] = terms["mse"] + terms["vb"]
             else:
                 terms["loss"] = terms["mse"]
+
         else:
             raise NotImplementedError(self.loss_type)
 

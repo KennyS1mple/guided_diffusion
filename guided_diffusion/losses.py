@@ -47,6 +47,7 @@ def approx_standard_normal_cdf(x):
     A fast approximation of the cumulative distribution function of the
     standard normal.
     """
+    # 高斯分布的分布函数的近似取值
     return 0.5 * (1.0 + th.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * th.pow(x, 3))))
 
 
@@ -62,15 +63,28 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     :return: a tensor like x of log probabilities (in nats).
     """
     assert x.shape == means.shape == log_scales.shape
+
+    # 预处理x0, 使其服从标准高斯分布, 方便计算
     centered_x = x - means
+    # stdv: standard deviation 标准差
+    # 注意这里是有负号的, 所以相当于除以标准差
     inv_stdv = th.exp(-log_scales)
+
+    # 加上一个很小的数字为了方便得到x0在高斯分布中的概率值
     plus_in = inv_stdv * (centered_x + 1.0 / 255.0)
+    # cdf: Cumulative Distribution Function (分布函数)
+    # 输入值x, 输出P(X <= x), P为标准高斯分布
     cdf_plus = approx_standard_normal_cdf(plus_in)
+
     min_in = inv_stdv * (centered_x - 1.0 / 255.0)
     cdf_min = approx_standard_normal_cdf(min_in)
+
     log_cdf_plus = th.log(cdf_plus.clamp(min=1e-12))
     log_one_minus_cdf_min = th.log((1.0 - cdf_min).clamp(min=1e-12))
+    # 实际概率值用两个微调之后的差值表示
     cdf_delta = cdf_plus - cdf_min
+
+    # 当预测的x0偏差过大, 通过log函数放大损失
     log_probs = th.where(
         x < -0.999,
         log_cdf_plus,
