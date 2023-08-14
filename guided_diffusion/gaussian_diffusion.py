@@ -154,6 +154,7 @@ class GaussianDiffusion:
         self.sqrt_recipm1_alphas_cumprod = np.sqrt(1.0 / self.alphas_cumprod - 1)
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
+        # 注意var其实是var^2
         self.posterior_variance = (
             betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
         )
@@ -164,9 +165,11 @@ class GaussianDiffusion:
         self.posterior_log_variance_clipped = np.log(
             np.append(self.posterior_variance[1], self.posterior_variance[1:])
         )
+        # coef: coefficient 系数(后验分布均值的系数1)
         self.posterior_mean_coef1 = (
             betas * np.sqrt(self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
         )
+        # coef: coefficient 系数(后验分布均值的系数2)
         self.posterior_mean_coef2 = (
             (1.0 - self.alphas_cumprod_prev)
             * np.sqrt(alphas)
@@ -271,22 +274,27 @@ class GaussianDiffusion:
             assert model_output.shape == (B, C * 2, *x.shape[2:])
             model_output, model_var_values = th.split(model_output, C, dim=1)
             if self.model_var_type == ModelVarType.LEARNED:
+                # 直接预测log(variance)
                 model_log_variance = model_var_values
                 model_variance = th.exp(model_log_variance)
             else:
                 # 论文所述方式： exp(vlogB + (1-v)logB~)
+                # 预测v
                 min_log = _extract_into_tensor(
                     self.posterior_log_variance_clipped, t, x.shape
                 )
                 max_log = _extract_into_tensor(np.log(self.betas), t, x.shape)
                 # The model_var_values is [-1, 1] for [min_var, max_var].
                 frac = (model_var_values + 1) / 2
+                # 论文所述方式： exp(vlogB + (1-v)logB~)
                 model_log_variance = frac * max_log + (1 - frac) * min_log
                 model_variance = th.exp(model_log_variance)
         else:
+            # 不学习variance, 使用固定var(B or B~)
             model_variance, model_log_variance = {
                 # for fixedlarge, we set the initial (log-)variance like so
                 # to get a better decoder log likelihood.
+                # large: beta    small: beta~
                 ModelVarType.FIXED_LARGE: (
                     np.append(self.posterior_variance[1], self.betas[1:]),
                     np.log(np.append(self.posterior_variance[1], self.betas[1:])),
@@ -307,17 +315,22 @@ class GaussianDiffusion:
             return x
 
         if self.model_mean_type == ModelMeanType.PREVIOUS_X:
+            # 直接预测mean, 暂时不知道previous的意思
             pred_xstart = process_xstart(
                 self._predict_xstart_from_xprev(x_t=x, t=t, xprev=model_output)
             )
             model_mean = model_output
         elif self.model_mean_type in [ModelMeanType.START_X, ModelMeanType.EPSILON]:
             if self.model_mean_type == ModelMeanType.START_X:
+                # 直接预测x0
                 pred_xstart = process_xstart(model_output)
             else:
+                # 预测噪声 天下为公
+                # 通过噪声得到x0
                 pred_xstart = process_xstart(
                     self._predict_xstart_from_eps(x_t=x, t=t, eps=model_output)
                 )
+                # 通过x0得到mean
             model_mean, _, _ = self.q_posterior_mean_variance(
                 x_start=pred_xstart, x_t=x, t=t
             )
@@ -670,6 +683,7 @@ class GaussianDiffusion:
         model,
         shape,
         noise=None,
+        # 对模型的预测的x0是否进行-1, 1之间的截断
         clip_denoised=True,
         denoised_fn=None,
         cond_fn=None,
@@ -728,12 +742,15 @@ class GaussianDiffusion:
                  - 'output': a shape [N] tensor of NLLs or KLs.
                  - 'pred_xstart': the x_0 predictions.
         """
+        # 后验分布的真实mean和var
         true_mean, _, true_log_variance_clipped = self.q_posterior_mean_variance(
             x_start=x_start, x_t=x_t, t=t
         )
+        # 模型预测的mean和var
         out = self.p_mean_variance(
             model, x_t, t, clip_denoised=clip_denoised, model_kwargs=model_kwargs
         )
+        # 计算两个高斯分布之间的kl散度
         kl = normal_kl(
             true_mean, true_log_variance_clipped, out["mean"], out["log_variance"]
         )
@@ -839,7 +856,7 @@ class GaussianDiffusion:
         t = th.tensor([self.num_timesteps - 1] * batch_size, device=x_start.device)
         qt_mean, _, qt_log_variance = self.q_mean_variance(x_start, t)
         kl_prior = normal_kl(
-            mean1=qt_mean, logvar1=qt_log_variance, mean2=0.0, logvar2=0.0
+            mean1=qt_mean, log_var1=qt_log_variance, mean2=0.0, log_var2=0.0
         )
         return mean_flat(kl_prior) / np.log(2.0)
 

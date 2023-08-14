@@ -9,7 +9,7 @@ import numpy as np
 import torch as th
 
 
-def normal_kl(mean1, logvar1, mean2, logvar2):
+def normal_kl(mean1, log_var1, mean2, log_var2):
     """
     Compute the KL divergence between two gaussians.
 
@@ -17,7 +17,7 @@ def normal_kl(mean1, logvar1, mean2, logvar2):
     scalars, among other use cases.
     """
     tensor = None
-    for obj in (mean1, logvar1, mean2, logvar2):
+    for obj in (mean1, log_var1, mean2, log_var2):
         if isinstance(obj, th.Tensor):
             tensor = obj
             break
@@ -25,17 +25,20 @@ def normal_kl(mean1, logvar1, mean2, logvar2):
 
     # Force variances to be Tensors. Broadcasting helps convert scalars to
     # Tensors, but it does not work for th.exp().
-    logvar1, logvar2 = [
+    log_var1, log_var2 = [
         x if isinstance(x, th.Tensor) else th.tensor(x).to(tensor)
-        for x in (logvar1, logvar2)
+        for x in (log_var1, log_var2)
     ]
 
+    # 通过两个高斯分布的mean和var和计算kl散度， 下面就是计算公式
+    # log(var2/var1) + (var1^2 + (mean1 - mean2)^2)/2 * var2^2 - 0.5
+    # 注意这里的log_var是log(var^2), 模型的输出
     return 0.5 * (
-        -1.0
-        + logvar2
-        - logvar1
-        + th.exp(logvar1 - logvar2)
-        + ((mean1 - mean2) ** 2) * th.exp(-logvar2)
+            -1.0
+            + log_var2
+            - log_var1
+            + th.exp(log_var1 - log_var2)
+            + ((mean1 - mean2) ** 2) * th.exp(-log_var2)
     )
 
 
