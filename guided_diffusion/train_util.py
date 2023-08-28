@@ -163,6 +163,7 @@ class TrainLoop:
             if self.step % self.log_interval == 0:
                 logger.dumpkvs()
             if self.step % self.save_interval == 0:
+                # TODO: 可以花点时间看一下， 暂且略过， ema是什么？？？
                 self.save()
                 # Run for a finite amount of time in integration tests.
                 if os.environ.get("DIFFUSION_TRAINING_TEST", "") and self.step > 0:
