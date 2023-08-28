@@ -91,6 +91,7 @@ class TrainLoop:
             ]
 
         if th.cuda.is_available():
+            # TODO: ddp未看, 先试试单卡训练
             self.use_ddp = True
             self.ddp_model = DDP(
                 self.model,
@@ -209,11 +210,13 @@ class TrainLoop:
                     losses = compute_losses()
 
             if isinstance(self.schedule_sampler, LossAwareSampler):
+                # TODO: 未看, 反正是更新重要性采样的权重
                 self.schedule_sampler.update_with_local_losses(
                     t, losses["loss"].detach()
                 )
 
             loss = (losses["loss"] * weights).mean()
+            # 记录loss
             log_loss_dict(
                 self.diffusion, t, {k: v * weights for k, v in losses.items()}
             )
